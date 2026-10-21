@@ -64,5 +64,6 @@ target_link_libraries(version PRIVATE codecs minhook::minhook user32 gdi32 ws2_3
 # /debug turns off dropping unreferenced code and folding identical functions; turn them back on.
 target_link_options(version PRIVATE /OPT:REF /OPT:ICF /INCREMENTAL:NO)
 
-add_executable(codectest tools/codectest.cpp)
+# Test tool, not part of the release: cmake --build build\mod --target codectest
+add_executable(codectest EXCLUDE_FROM_ALL tools/codectest.cpp)
 target_link_libraries(codectest PRIVATE codecs)

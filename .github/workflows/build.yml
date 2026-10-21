@@ -12,28 +12,37 @@ on:
 permissions:
   contents: write
 
+# A newer push to the same branch or PR cancels the run still going.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   # The vcpkg commit the dependencies are tested with.
   VCPKG_COMMIT: 469a0504e4a6ebf6173d1c0f51a7fa34c382fd43
-  VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}\..\vcpkg-binary-cache
 
 jobs:
   build:
     runs-on: windows-2022
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
+      # Only the pinned commit is fetched, not vcpkg's whole history.
       - name: Get vcpkg
         shell: pwsh
         run: |
-          git clone https://github.com/microsoft/vcpkg.git ..\vcpkg
-          git -C ..\vcpkg checkout --quiet $env:VCPKG_COMMIT
+          git init --quiet ..\vcpkg
+          git -C ..\vcpkg fetch --quiet --depth 1 https://github.com/microsoft/vcpkg.git $env:VCPKG_COMMIT
+          git -C ..\vcpkg checkout --quiet FETCH_HEAD
           ..\vcpkg\bootstrap-vcpkg.bat -disableMetrics
-          New-Item -ItemType Directory -Force $env:VCPKG_DEFAULT_BINARY_CACHE | Out-Null
+          # actions/cache needs an absolute path without '..'.
+          $cache = "$env:RUNNER_TEMP\vcpkg-binary-cache"
+          New-Item -ItemType Directory -Force $cache | Out-Null
+          "VCPKG_DEFAULT_BINARY_CACHE=$cache" >> $env:GITHUB_ENV
 
       # Built packages are cached; a change of vcpkg, the manifest or the overlays rebuilds them.
       # Saved right after the dependencies, so a later failure does not lose them.
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v6
         id: cache
         with:
           path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
@@ -44,7 +53,7 @@ jobs:
         shell: cmd
         run: tools\deps.cmd
 
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@v6
         if: steps.cache.outputs.cache-hit != 'true'
         with:
           path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
@@ -55,7 +64,7 @@ jobs:
         run: |
           if "%GITHUB_REF_TYPE%"=="tag" (tools\release.cmd %GITHUB_REF_NAME%) else (tools\release.cmd dev-%GITHUB_SHA:~0,7%)
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: picasa-viewer-mod
           path: release\*.zip
