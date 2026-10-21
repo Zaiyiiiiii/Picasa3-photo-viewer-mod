@@ -1,0 +1,18 @@
+{
+  "name": "picasa-mod",
+  "version-string": "0.1",
+  "dependencies": [
+    { "name": "libheif", "default-features": false },
+    { "name": "libavif", "features": [ "dav1d" ] },
+    "libjxl",
+    "libwebp",
+    "giflib",
+    "lcms",
+    "minhook",
+    {
+      "name": "ffmpeg",
+      "default-features": false,
+      "features": [ "avcodec", "avformat", "swresample", "swscale", "dav1d" ]
+    }
+  ]
+}

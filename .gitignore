@@ -1,0 +1,9 @@
+analysis/
+ghidra/
+tools/ghidra.ps1
+tools/ghidra_scripts/
+build/
+dist/
+release/
+testdata/
+third_party/

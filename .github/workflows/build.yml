@@ -1,0 +1,72 @@
+# Builds version.dll on every push and pull request; a pushed v* tag also publishes a GitHub release
+# with the packed zip.
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  # The vcpkg commit the dependencies are tested with.
+  VCPKG_COMMIT: 469a0504e4a6ebf6173d1c0f51a7fa34c382fd43
+  VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}\..\vcpkg-binary-cache
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get vcpkg
+        shell: pwsh
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git ..\vcpkg
+          git -C ..\vcpkg checkout --quiet $env:VCPKG_COMMIT
+          ..\vcpkg\bootstrap-vcpkg.bat -disableMetrics
+          New-Item -ItemType Directory -Force $env:VCPKG_DEFAULT_BINARY_CACHE | Out-Null
+
+      # Built packages are cached; a change of vcpkg, the manifest or the overlays rebuilds them.
+      # Saved right after the dependencies, so a later failure does not lose them.
+      - uses: actions/cache/restore@v4
+        id: cache
+        with:
+          path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+          key: vcpkg-x86-static-${{ env.VCPKG_COMMIT }}-${{ hashFiles('mod/vcpkg.json', 'tools/vcpkg-overlays/**') }}
+          restore-keys: vcpkg-x86-static-${{ env.VCPKG_COMMIT }}-
+
+      - name: Dependencies
+        shell: cmd
+        run: tools\deps.cmd
+
+      - uses: actions/cache/save@v4
+        if: steps.cache.outputs.cache-hit != 'true'
+        with:
+          path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+          key: ${{ steps.cache.outputs.cache-primary-key }}
+
+      - name: Build and pack
+        shell: cmd
+        run: |
+          if "%GITHUB_REF_TYPE%"=="tag" (tools\release.cmd %GITHUB_REF_NAME%) else (tools\release.cmd dev-%GITHUB_SHA:~0,7%)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: picasa-viewer-mod
+          path: release\*.zip
+
+      - name: Publish release
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $zip = "release\picasa-viewer-mod-$env:GITHUB_REF_NAME.zip"
+          gh release view $env:GITHUB_REF_NAME 2>$null
+          if ($LASTEXITCODE -eq 0) { gh release upload $env:GITHUB_REF_NAME $zip --clobber }
+          else { gh release create $env:GITHUB_REF_NAME $zip --title $env:GITHUB_REF_NAME --generate-notes }
