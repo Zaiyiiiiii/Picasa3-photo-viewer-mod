@@ -8,4 +8,5 @@ if not defined CI set X_VCPKG_ASSET_SOURCES=clear;x-script,curl.exe --ssl-no-rev
 "%ROOT%\..\vcpkg\vcpkg.exe" install --triplet x86-windows-static ^
   "--x-manifest-root=%ROOT%\mod" ^
   "--x-install-root=%ROOT%\build\vcpkg_installed" ^
-  "--overlay-ports=%ROOT%\tools\vcpkg-overlays"
+  "--overlay-ports=%ROOT%\tools\vcpkg-overlays" ^
+  "--overlay-triplets=%ROOT%\tools\vcpkg-triplets"

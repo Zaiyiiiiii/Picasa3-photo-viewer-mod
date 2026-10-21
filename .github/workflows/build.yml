@@ -37,7 +37,7 @@ jobs:
         id: cache
         with:
           path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
-          key: vcpkg-x86-static-${{ env.VCPKG_COMMIT }}-${{ hashFiles('mod/vcpkg.json', 'tools/vcpkg-overlays/**') }}
+          key: vcpkg-x86-static-${{ env.VCPKG_COMMIT }}-${{ hashFiles('mod/vcpkg.json', 'tools/vcpkg-overlays/**', 'tools/vcpkg-triplets/**') }}
           restore-keys: vcpkg-x86-static-${{ env.VCPKG_COMMIT }}-
 
       - name: Dependencies
