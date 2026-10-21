@@ -68,6 +68,8 @@ jobs:
         with:
           name: picasa-viewer-mod
           path: release\*.zip
+          # Dev builds only; tagged builds are kept on the release page.
+          retention-days: 7
 
       - name: Publish release
         if: github.ref_type == 'tag'
